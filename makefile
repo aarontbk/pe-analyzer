@@ -33,3 +33,7 @@ build/%.o: $(SRC_DIR)/%.cpp
 # Clean rule
 clean:
 	rm -rf build $(BIN_DIR) *.o
+
+# Run the program
+run: $(TARGET)
+	./$(TARGET)
