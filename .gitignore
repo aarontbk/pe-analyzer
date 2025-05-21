@@ -1,4 +1,9 @@
-*.exe
+# Build artifacts
+*.o
 *.obj
-*.pdb
+*.exe
+*.out
 *.log
+*.a
+*.lib
+*.dll
