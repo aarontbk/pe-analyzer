@@ -1,11 +1,37 @@
-# Build artifacts
+# Build directories
+build/
+bin/
+obj/
+
+# VS Code files
+.vscode/
+*.code-workspace
+
+# Compiled files
 *.o
 *.obj
 *.exe
 *.out
-*.log
-*.a
-*.lib
-*.dll
-.vscode/*
-.bin/*
+*.app
+pe-analyzer
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
