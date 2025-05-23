@@ -60,6 +60,13 @@ void PEFile::printHeaders() const {
     printOptionalHeader(m_ntHeader.OptionalHeader);
     printDataDirectories(m_ntHeader.OptionalHeader);
     printSectionTable(m_sectionHeaders.data(), m_ntHeader.FileHeader.NumberOfSections);
+    
+    // Reset file position to start before reading import/export tables
+    m_file.clear();
+    m_file.seekg(0);
+    
+    printImportTable(m_file, m_ntHeader.OptionalHeader, m_sectionHeaders.data(), m_ntHeader.FileHeader.NumberOfSections);
+    printExportTable(m_file, m_ntHeader.OptionalHeader, m_sectionHeaders.data(), m_ntHeader.FileHeader.NumberOfSections);
 }
 
 

@@ -2,6 +2,10 @@
 #include <iomanip>
 #include <ctime>
 #include <string>
+#include <vector>
+#include <map>
+#include <cctype>
+#include <sstream>
 
 void printDosHeader(const IMAGE_DOS_HEADER& header) {
     std::cout << "=== DOS Header ===" << std::endl;
@@ -200,8 +204,8 @@ void printSectionTable(const IMAGE_SECTION_HEADER* sections, uint16_t count) {
     for (uint16_t i = 0; i < count; i++) {
         const IMAGE_SECTION_HEADER& section = sections[i];
         
-        // Print section name with index
-        std::cout << "[" << i << "] ";
+        // Print section name with index (decimal)
+        std::cout << "[" << std::dec << i << "] ";
         std::string name(section.Name, 8);
         name = name.substr(0, name.find('\0'));  // Trim null terminator
         std::cout << name << std::endl;
@@ -220,5 +224,175 @@ void printSectionTable(const IMAGE_SECTION_HEADER* sections, uint16_t count) {
                   << getSectionFlagsDescription(section.Characteristics) << std::endl;
         
         std::cout << std::endl;  // Add blank line between sections
+    }
+}
+
+// Helper: Convert RVA to file offset
+uint32_t rvaToOffset(uint32_t rva, const IMAGE_SECTION_HEADER* sections, uint16_t sectionCount) {
+    for (uint16_t i = 0; i < sectionCount; ++i) {
+        const auto& sec = sections[i];
+        uint32_t secStart = sec.VirtualAddress;
+        uint32_t secEnd = sec.VirtualAddress + sec.Misc.VirtualSize;
+        if (rva >= secStart && rva < secEnd) {
+            return sec.PointerToRawData + (rva - secStart);
+        }
+    }
+    return 0; // Not found
+}
+
+void printImportTable(std::istream& file, const IMAGE_OPTIONAL_HEADER64& optionalHeader, const IMAGE_SECTION_HEADER* sections, uint16_t sectionCount) {
+    const IMAGE_DATA_DIRECTORY& importDir = optionalHeader.DataDirectory[1];
+    if (importDir.VirtualAddress == 0 || importDir.Size == 0) {
+        std::cout << "\n=== Import Table ===\n(no imports)\n";
+        return;
+    }
+
+    std::vector<std::string> dllNames;
+    std::vector<std::vector<std::string>> dllFuncs;
+    
+    // Get the offset of the import directory
+    uint32_t importDirOffset = rvaToOffset(importDir.VirtualAddress, sections, sectionCount);
+    if (importDirOffset == 0) {
+        std::cout << "\n=== Import Table ===\nError: Could not find import directory\n";
+        return;
+    }
+
+    file.clear();
+    file.seekg(importDirOffset);
+
+    while (true) {
+        IMAGE_IMPORT_DESCRIPTOR desc;
+        file.read(reinterpret_cast<char*>(&desc), sizeof(desc));
+        
+        // Check for end of import descriptors
+        if (desc.OriginalFirstThunk == 0 && desc.FirstThunk == 0) {
+            break;
+        }
+
+        // Read DLL name
+        uint32_t dllNameOffset = rvaToOffset(desc.Name, sections, sectionCount);
+        if (dllNameOffset == 0) {
+            continue;
+        }
+
+        file.clear();
+        file.seekg(dllNameOffset);
+        std::string dllName;
+        char c;
+        while (file.get(c) && c != '\0') {
+            dllName += c;
+        }
+        dllNames.push_back(dllName);
+
+        // Read functions
+        std::vector<std::string> funcs;
+        uint32_t thunkRVA = desc.OriginalFirstThunk ? desc.OriginalFirstThunk : desc.FirstThunk;
+        uint32_t thunkOffset = rvaToOffset(thunkRVA, sections, sectionCount);
+        
+        if (thunkOffset != 0) {
+            file.clear();
+            file.seekg(thunkOffset);
+            
+            while (true) {
+                uint64_t thunkData = 0;
+                file.read(reinterpret_cast<char*>(&thunkData), sizeof(uint64_t));
+                
+                if (thunkData == 0) {
+                    break;
+                }
+
+                if (thunkData & 0x8000000000000000) {
+                    // Import by ordinal
+                    std::ostringstream oss;
+                    oss << "Ordinal: " << (thunkData & 0xFFFF);
+                    funcs.push_back(oss.str());
+                } else {
+                    // Import by name
+                    uint32_t hintNameRVA = static_cast<uint32_t>(thunkData);
+                    uint32_t hintNameOffset = rvaToOffset(hintNameRVA, sections, sectionCount);
+                    
+                    if (hintNameOffset != 0) {
+                        file.clear();
+                        file.seekg(hintNameOffset + 2); // Skip hint
+                        std::string funcName;
+                        char fc;
+                        while (file.get(fc) && fc != '\0') {
+                            funcName += fc;
+                        }
+                        funcs.push_back(funcName);
+                    }
+                }
+            }
+        }
+        dllFuncs.push_back(funcs);
+    }
+
+    std::cout << "\n=== Import Table ===\nImported DLLs:" << std::endl;
+    for (size_t i = 0; i < dllNames.size(); ++i) {
+        std::cout << "[" << i << "] " << dllNames[i] << std::endl;
+        for (const auto& fn : dllFuncs[i]) {
+            std::cout << "    - " << fn << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
+void printExportTable(std::istream& file, const IMAGE_OPTIONAL_HEADER64& optionalHeader, const IMAGE_SECTION_HEADER* sections, uint16_t sectionCount) {
+    const IMAGE_DATA_DIRECTORY& exportDir = optionalHeader.DataDirectory[0];
+    if (exportDir.VirtualAddress == 0 || exportDir.Size == 0) {
+        std::cout << "\n=== Export Table ===\n(no exports)\n";
+        return;
+    }
+
+    uint32_t exportDirOffset = rvaToOffset(exportDir.VirtualAddress, sections, sectionCount);
+    if (exportDirOffset == 0) {
+        std::cout << "\n=== Export Table ===\nError: Could not find export directory\n";
+        return;
+    }
+
+    file.clear();
+    file.seekg(exportDirOffset);
+    IMAGE_EXPORT_DIRECTORY expDir;
+    file.read(reinterpret_cast<char*>(&expDir), sizeof(expDir));
+
+    if (expDir.NumberOfNames == 0) {
+        std::cout << "\n=== Export Table ===\n(no exports)\n";
+        return;
+    }
+
+    // Read name RVAs
+    uint32_t namesOffset = rvaToOffset(expDir.AddressOfNames, sections, sectionCount);
+    if (namesOffset == 0) {
+        std::cout << "\n=== Export Table ===\nError: Could not find export names\n";
+        return;
+    }
+
+    file.clear();
+    file.seekg(namesOffset);
+    std::vector<uint32_t> nameRVAs(expDir.NumberOfNames);
+    file.read(reinterpret_cast<char*>(nameRVAs.data()), expDir.NumberOfNames * sizeof(uint32_t));
+
+    std::cout << "\n=== Export Table ===" << std::endl;
+    bool hasExports = false;
+
+    for (uint32_t rva : nameRVAs) {
+        uint32_t nameOffset = rvaToOffset(rva, sections, sectionCount);
+        if (nameOffset != 0) {
+            file.clear();
+            file.seekg(nameOffset);
+            std::string name;
+            char c;
+            while (file.get(c) && c != '\0') {
+                name += c;
+            }
+            if (!name.empty()) {
+                std::cout << "- " << name << std::endl;
+                hasExports = true;
+            }
+        }
+    }
+
+    if (!hasExports) {
+        std::cout << "(no exports)" << std::endl;
     }
 } 

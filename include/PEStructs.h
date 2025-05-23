@@ -103,4 +103,26 @@ struct IMAGE_SECTION_HEADER {
     uint16_t NumberOfLinenumbers;
     uint32_t Characteristics;
 };
+
+struct IMAGE_IMPORT_DESCRIPTOR {
+    uint32_t OriginalFirstThunk; // RVA to original unbound IAT (PIMAGE_THUNK_DATA)
+    uint32_t TimeDateStamp;
+    uint32_t ForwarderChain;
+    uint32_t Name;              // RVA to DLL name
+    uint32_t FirstThunk;        // RVA to IAT (if bound this IAT has actual addresses)
+};
+
+struct IMAGE_EXPORT_DIRECTORY {
+    uint32_t Characteristics;
+    uint32_t TimeDateStamp;
+    uint16_t MajorVersion;
+    uint16_t MinorVersion;
+    uint32_t Name;              // RVA to DLL name
+    uint32_t Base;
+    uint32_t NumberOfFunctions;
+    uint32_t NumberOfNames;
+    uint32_t AddressOfFunctions;     // RVA to functions
+    uint32_t AddressOfNames;         // RVA to names
+    uint32_t AddressOfNameOrdinals;  // RVA to ordinals
+};
 #pragma pack(pop) 

@@ -19,7 +19,7 @@ private:
     bool validateDosHeader() const;
     bool validateNtHeader() const;
 
-    std::ifstream m_file;
+    mutable std::ifstream m_file;
     bool m_isValid;
     IMAGE_DOS_HEADER m_dosHeader;
     IMAGE_NT_HEADERS64 m_ntHeader;
