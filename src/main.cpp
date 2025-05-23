@@ -3,9 +3,10 @@
 #include "PEFile.h"
 
 #define NOTEPAD_PATH "/mnt/c/Windows/System32/notepad.exe"
+#define CHROME_PATH "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"
 
 int main(int argc, char* argv[]) {
-    const char* filePath = NOTEPAD_PATH;
+    const char* filePath = CHROME_PATH;
     
     // Allow command line override of file path
     if (argc > 1) {
@@ -14,12 +15,7 @@ int main(int argc, char* argv[]) {
 
     PEFile peFile(filePath);
     if (!peFile.isValid()) {
-        std::cerr << peFile.getErrorMessage() << std::endl;
-        return 1;
-    }
-
-    if (!peFile.parse()) {
-        std::cerr << peFile.getErrorMessage() << std::endl;
+        std::cerr << "Failed to open or parse PE file." << std::endl;
         return 1;
     }
 

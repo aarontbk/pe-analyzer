@@ -1,6 +1,16 @@
 #pragma once
 #include <cstdint>
 
+#define IMAGE_NUMBEROF_DIRECTORY_ENTRIES 16
+
+// Section characteristics
+#define IMAGE_SCN_CNT_CODE              0x00000020
+#define IMAGE_SCN_CNT_INITIALIZED_DATA  0x00000040
+#define IMAGE_SCN_CNT_UNINITIALIZED_DATA 0x00000080
+#define IMAGE_SCN_MEM_EXECUTE           0x20000000
+#define IMAGE_SCN_MEM_READ              0x40000000
+#define IMAGE_SCN_MEM_WRITE             0x80000000
+
 #pragma pack(push, 1)
 struct IMAGE_DOS_HEADER {
     uint16_t e_magic;      // Magic number
@@ -34,9 +44,63 @@ struct IMAGE_FILE_HEADER {
     uint16_t Characteristics;
 };
 
-struct IMAGE_NT_HEADERS32 {
+struct IMAGE_DATA_DIRECTORY {
+    uint32_t VirtualAddress;
+    uint32_t Size;
+};
+
+struct IMAGE_OPTIONAL_HEADER64 {
+    uint16_t Magic;
+    uint8_t  MajorLinkerVersion;
+    uint8_t  MinorLinkerVersion;
+    uint32_t SizeOfCode;
+    uint32_t SizeOfInitializedData;
+    uint32_t SizeOfUninitializedData;
+    uint32_t AddressOfEntryPoint;
+    uint32_t BaseOfCode;
+    uint64_t ImageBase;
+    uint32_t SectionAlignment;
+    uint32_t FileAlignment;
+    uint16_t MajorOperatingSystemVersion;
+    uint16_t MinorOperatingSystemVersion;
+    uint16_t MajorImageVersion;
+    uint16_t MinorImageVersion;
+    uint16_t MajorSubsystemVersion;
+    uint16_t MinorSubsystemVersion;
+    uint32_t Win32VersionValue;
+    uint32_t SizeOfImage;
+    uint32_t SizeOfHeaders;
+    uint32_t CheckSum;
+    uint16_t Subsystem;
+    uint16_t DllCharacteristics;
+    uint64_t SizeOfStackReserve;
+    uint64_t SizeOfStackCommit;
+    uint64_t SizeOfHeapReserve;
+    uint64_t SizeOfHeapCommit;
+    uint32_t LoaderFlags;
+    uint32_t NumberOfRvaAndSizes;
+    IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
+};
+
+struct IMAGE_NT_HEADERS64 {
     uint32_t Signature;      // "PE\0\0"
     IMAGE_FILE_HEADER FileHeader;
-    // Optional header omitted for simplicity
+    IMAGE_OPTIONAL_HEADER64 OptionalHeader;
+};
+
+struct IMAGE_SECTION_HEADER {
+    char Name[8];
+    union {
+        uint32_t PhysicalAddress;
+        uint32_t VirtualSize;
+    } Misc;
+    uint32_t VirtualAddress;
+    uint32_t SizeOfRawData;
+    uint32_t PointerToRawData;
+    uint32_t PointerToRelocations;
+    uint32_t PointerToLinenumbers;
+    uint16_t NumberOfRelocations;
+    uint16_t NumberOfLinenumbers;
+    uint32_t Characteristics;
 };
 #pragma pack(pop) 

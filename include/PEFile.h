@@ -1,26 +1,27 @@
 #pragma once
 #include "PEStructs.h"
-#include "FileReader.h"
 #include <string>
+#include <vector>
+#include <fstream>
 
 class PEFile {
 public:
-    PEFile(const char* filePath);
+    PEFile(const std::string& filename);
     ~PEFile();
 
-    bool isValid() const { return m_file != nullptr; }
-    const std::string& getErrorMessage() const { return m_errorMessage; }
-    
-    bool parse();
+    bool isValid() const { return m_isValid; }
     void printHeaders() const;
 
 private:
-    FILE* m_file;
-    std::string m_errorMessage;
-    IMAGE_DOS_HEADER m_dosHeader;
-    IMAGE_NT_HEADERS32 m_ntHeader;
-    bool m_isParsed;
+    bool readDosHeader();
+    bool readNtHeader();
+    bool readSectionHeaders();
+    bool validateDosHeader() const;
+    bool validateNtHeader() const;
 
-    bool validateDosHeader();
-    bool validateNtHeader();
+    std::ifstream m_file;
+    bool m_isValid;
+    IMAGE_DOS_HEADER m_dosHeader;
+    IMAGE_NT_HEADERS64 m_ntHeader;
+    std::vector<IMAGE_SECTION_HEADER> m_sectionHeaders;
 }; 
